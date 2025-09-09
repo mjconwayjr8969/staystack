@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>StayStack · Netlify Functions & Blobs Starter</title>
+  <style>
+    body{font:14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding:24px; max-width:960px; margin:0 auto; color:#0f172a;}
+    code, pre{font:12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;}
+    .card{border:1px solid #e2e8f0; border-radius:12px; padding:16px; margin:12px 0; background:#fff;}
+    .ok{color:#16a34a;} .bad{color:#dc2626;}
+    .muted{color:#64748b;}
+    .btn{display:inline-block; padding:8px 12px; border:1px solid #0f172a; border-radius:8px; text-decoration:none; color:#0f172a;}
+  </style>
+</head>
+<body>
+  <h1>StayStack · Netlify Blobs Starter</h1>
+  <p class="muted">This page only verifies your Functions. Replace <code>index.html</code> later with your real app.</p>
+
+  <div class="card">
+    <h3>1) Function check</h3>
+    <p>Ping endpoint: <code>/.netlify/functions/ping</code></p>
+    <pre id="ping">loading…</pre>
+  </div>
+
+  <div class="card">
+    <h3>2) Blobs-backed state</h3>
+    <p>State endpoint: <code>/.netlify/functions/state</code></p>
+    <pre id="state">loading…</pre>
+    <p><a href="#" id="write" class="btn">Write a demo document</a></p>
+  </div>
+
+  <div class="card">
+    <h3>How to use in your app</h3>
+    <p>In your React app's <code>App()</code>, after your <code>useState</code>, add these hooks to load/save from the cloud:</p>
+<pre><code>const REMOTE_URL = "/.netlify/functions/state";
+
+React.useEffect(() =&gt; {
+  (async () =&gt; {
+    try {
+      const r = await fetch(REMOTE_URL, { cache: "no-store" });
+      if (r.ok) {
+        const cloud = await r.json();
+        if (cloud &amp;&amp; Object.keys(cloud).length) {
+          setState(s =&gt; ({ ...s, ...cloud })); // merge as you prefer
+        }
+      }
+    } catch {}
+  })();
+}, []);
+
+React.useEffect(() =&gt; {
+  const t = setTimeout(() =&gt; {
+    fetch(REMOTE_URL, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(state)
+    }).catch(() =&gt; {});
+  }, 400);
+  return () =&gt; clearTimeout(t);
+}, [state]);
+</code></pre>
+  </div>
+
+  <script>
+    async function load() {
+      const pingEl = document.getElementById('ping');
+      const stateEl = document.getElementById('state');
+      try {
+        const r = await fetch('/.netlify/functions/ping', { cache:'no-store' });
+        pingEl.textContent = r.ok ? JSON.stringify(await r.json(), null, 2) : ('HTTP ' + r.status);
+        pingEl.className = r.ok ? 'ok' : 'bad';
+      } catch (e) {
+        pingEl.textContent = String(e);
+        pingEl.className = 'bad';
+      }
+      try {
+        const r2 = await fetch('/.netlify/functions/state', { cache:'no-store' });
+        stateEl.textContent = r2.ok ? JSON.stringify(await r2.json(), null, 2) : ('HTTP ' + r2.status);
+        stateEl.className = r2.ok ? 'ok' : 'bad';
+      } catch (e) {
+        stateEl.textContent = String(e);
+        stateEl.className = 'bad';
+      }
+    }
+    document.getElementById('write').addEventListener('click', async (e) => {
+      e.preventDefault();
+      try {
+        const r = await fetch('/.netlify/functions/state', {
+          method: 'PUT',
+          headers: {'content-type':'application/json'},
+          body: JSON.stringify({ sample: { savedAt: new Date().toISOString(), note: 'Hello from StayStack starter!' } })
+        });
+        await load();
+        alert('Wrote sample data to blobs.');
+      } catch (e) {
+        alert('Write failed: ' + e.message);
+      }
+    });
+    load();
+  </script>
+</body>
+</html>
