@@ -138,10 +138,22 @@
       const [guests,setGuests]=useState(state.filters.guests||1);
       const [name,setName]=useState('');
       const [email,setEmail]=useState('');
+      const [phone,setPhone]=useState(''); // SMS phone (optional)
+      const [smsOptIn,setSmsOptIn]=useState(false); // guest opts into text confirmation
       const [note,setNote]=useState('');
       const [payment,setPayment]=useState('card');
       const nights=useMemo(()=> (from&&to)? nightsBetween(from,to):0, [from,to]);
       const total=nights*property.pricePerNight;
+      // helper to send SMS via Netlify Function (Twilio)
+      const sendSms = async (to, text) => {
+        try {
+          await fetch('/.netlify/functions/sms', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ to, text })
+          });
+        } catch {}
+      };
       const conflicting=useMemo(()=> !from||!to?false : state.bookings.some(b=> b.propertyId===property.id && b.status!=='declined' && b.status!=='cancelled' && rangesOverlap(b.from,b.to,from,to)), [from,to,state.bookings]);
 
       // Email helper (optional)
@@ -166,6 +178,15 @@
         close();
         setTimeout(()=> alert('Request submitted! We\'ll notify you when a manager responds.'), 30);
         sendEmails(booking);
+        // SMS notifications (optional)
+        const brand = state.settings?.brand || 'StayStack';
+        const smsCfg = state.settings?.sms || {};
+        if (smsCfg.enabled && smsOptIn && phone) {
+          await sendSms(phone, `${brand}: We received your request for ${property.title} (${from}→${to}). We’ll email you a confirmation soon.`);
+        }
+        if (smsCfg.enabled && smsCfg.managerPhone) {
+          await sendSms(smsCfg.managerPhone, `New booking request: ${name} for ${property.title} ${from}→${to}, ${guests} guests.`);
+        }
       };
 
       const images = Array.isArray(property.images)? property.images: toImages(property.image);
@@ -209,6 +230,19 @@
                   <div>
                     <label className="text-xs">Email</label>
                     <input className="w-full border rounded-lg px-3 py-2 mt-1" type="email" value={email} onChange={e=>setEmail(e.target.value)} />
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-3 mt-3">
+                  <div>
+                    <label className="text-xs">Phone (for text confirmation)</label>
+                    <input className="w-full border rounded-lg px-3 py-2 mt-1" placeholder="+12025550123" value={phone} onChange={e=>setPhone(e.target.value)} />
+                  </div>
+                  <div className="flex items-end">
+                    <label className="text-xs flex items-center gap-2 w-full">
+                      <input type="checkbox" checked={smsOptIn} onChange={e=>setSmsOptIn(e.target.checked)} />
+                      Text me a confirmation
+                    </label>
                   </div>
                 </div>
 
@@ -612,7 +646,7 @@
     );
   }
 
-  function Notifications({ state,setState }){ Notifications({ state,setState }){
+  function Notifications({ state,setState }){
     const unread = state.notifications.filter(n=>!n.read).length;
     const markAll=()=> setState(s=>({...s, notifications:s.notifications.map(n=>({...n, read:true})) }));
     return (
