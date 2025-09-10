@@ -63,7 +63,7 @@
   const DEFAULT_STATE = {
     role:'Guest',
     view:'browse',
-    settings:{ brand:'Downeast Getaway', email:{ enabled:false, publicKey:'', serviceId:'', templateId:'', managerEmail:'' } },
+    settings:{ brand:'Downeast Getaway', email:{ enabled:false, publicKey:'', serviceId:'', templateId:'', managerEmail:'' }, sms:{ enabled:false, managerPhone:'' } },
     properties: DEMO_PROPERTIES,
     bookings: [],
     notifications: [],
@@ -554,8 +554,9 @@
   function ManagerSettings({ state,setState }){
     const [brand,setBrand]=useState(state.settings.brand||'');
     const [emailCfg,setEmailCfg]=useState(state.settings.email||{ enabled:false, publicKey:'', serviceId:'', templateId:'', managerEmail:'' });
+    const [smsCfg,setSmsCfg]=useState(state.settings.sms||{ enabled:false, managerPhone:'' });
 
-    const save=()=> setState(s=>({...s, settings:{ ...s.settings, brand, email:emailCfg }}));
+    const save=()=> setState(s=>({...s, settings:{ ...s.settings, brand, email:emailCfg, sms:smsCfg }}));
 
     // backup/restore helpers
     const downloadJSON=(filename,data)=>{ const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=filename; a.click(); setTimeout(()=>URL.revokeObjectURL(url),1200); };
@@ -584,6 +585,19 @@
         </div>
 
         <div className="border rounded-2xl p-4">
+          <div className="text-base font-semibold">SMS (optional)</div>
+          <div className="text-sm text-slate-500">Sends texts via a Netlify Function + Twilio (server-side). Enable only after setting Twilio env vars in Netlify.</div>
+          <label className="flex items-center gap-2 mt-2">
+            <input type="checkbox" checked={!!smsCfg.enabled} onChange={e=>setSmsCfg({...smsCfg, enabled:e.target.checked})}/>
+            Enable SMS
+          </label>
+          <div className="grid md:grid-cols-2 gap-3 mt-2">
+            <input className="border rounded-lg px-3 py-2" placeholder="Manager phone (E.164, e.g. +12025550123)" value={smsCfg.managerPhone||''} onChange={e=>setSmsCfg({...smsCfg, managerPhone:e.target.value})}/>
+          </div>
+          <div className="mt-3"><button className="px-3 py-1.5 rounded-lg border" onClick={save}>Save</button></div>
+        </div>
+
+        <div className="border rounded-2xl p-4">
           <div className="text-base font-semibold">Backup & Restore</div>
           <div className="text-sm text-slate-500">Export your data before redeploys. Import to restore.</div>
           <div className="mt-3 flex items-center gap-2">
@@ -598,7 +612,7 @@
     );
   }
 
-  function Notifications({ state,setState }){
+  function Notifications({ state,setState }){ Notifications({ state,setState }){
     const unread = state.notifications.filter(n=>!n.read).length;
     const markAll=()=> setState(s=>({...s, notifications:s.notifications.map(n=>({...n, read:true})) }));
     return (
